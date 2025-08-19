@@ -1,0 +1,9 @@
+[
+    { "id": "uuid-1", "car_model_id": 1, "plate_no": "12가3456",
+      "image_url": null, "fuel_type": "gasoline", "efficiency_km_per_l": 14.1,
+      "status": "available", "created_at": "2025-08-19T06:00:00Z", "car_type": "corporate" },
+    { "id": "uuid-2", "car_model_id": 2, "plate_no": "34나7890",
+      "image_url": null, "fuel_type": "diesel", "efficiency_km_per_l": 10.2,
+      "status": "maintenance", "created_at": "2025-08-19T06:00:00Z", "car_type": "corporate" }
+  ]
+  
