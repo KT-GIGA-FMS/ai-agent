@@ -1,0 +1,7 @@
+[
+    { "id": 1, "name": "Avante", "url": "https://example.com/avante",
+      "fuel_type": "gasoline", "fuel_efficiency": 14.1 },
+    { "id": 2, "name": "Carnival", "url": "https://example.com/carnival",
+      "fuel_type": "diesel", "fuel_efficiency": 10.2 }
+  ]
+  
