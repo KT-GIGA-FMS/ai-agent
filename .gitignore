@@ -136,6 +136,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/
@@ -143,6 +144,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Service-specific environment files
+services/agent-api/.env.local
+services/query-api/.env.local
 
 # Spyder project settings
 .spyderproject
