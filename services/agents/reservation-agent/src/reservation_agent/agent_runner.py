@@ -3,6 +3,7 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import render_text_description
 from reservation_agent.tools.reservation_tool import check_availability, create_reservation
+from reservation_agent.tools.session_tools import update_slots, get_slots
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -32,7 +33,7 @@ llm = AzureChatOpenAI(
     streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
 )
 
-tools = [check_availability, create_reservation]
+tools = [check_availability, create_reservation, update_slots, get_slots]
 
 prompt = ChatPromptTemplate.from_messages([
     ("system",
@@ -41,20 +42,29 @@ prompt = ChatPromptTemplate.from_messages([
      "- 사용자 친화적이고 자연스러운 대화\n"
      "- 지능적인 정보 추론 및 변환\n"
      "- 명확하고 간결한 응답\n\n"
+     "## 슬롯 관리 규칙 (중요!)\n"
+     "- 사용자 발화에서 정보를 추출하면 반드시 update_slots 도구를 호출하라\n"
+     "- user_id는 숫자만 추출 (예: 'u_001입니다' → user_id='001')\n"
+     "- 시간 정보는 ISO8601 형식으로 변환 (예: '내일 오후 2시' → start_at='2025-01-16T14:00:00')\n"
+     "- 매 응답 전에 get_slots로 현재 상태를 확인하라\n"
+     "- 모든 update_slots/get_slots 호출 시 반드시 session_id 매개변수를 포함한다\n\n"
      "## 지능적 정보 처리\n"
      "사용자가 다양한 형식으로 정보를 제공할 수 있다:\n"
      "- 시간: '내일 오후 2시', '2025-01-16T14:00:00Z', '오후 3시부터 5시까지'\n"
-     "- 사용자 ID: 'u001', 'u_001', '001' → 모두 'u_001'로 정규화\n"
+     "- 사용자 ID: 'u001', 'u_001', '001' → 숫자만 추출\n"
      "- 날짜: '내일', '다음주 월요일', '2025-01-16' → 적절한 날짜로 변환\n\n"
      "## 도구 사용 규칙\n"
      "1. **check_availability**: 가용 차량 확인 시 차량 정보 전체를 반환받음\n"
      "2. **create_reservation**: vehicle_id는 반드시 차량의 실제 ID(예: 'uuid-1')를 사용\n"
      "   - 차량 이름(예: 'Avante')이 아닌 ID를 사용해야 함\n"
-     "   - check_availability에서 반환된 차량의 'id' 필드를 사용\n\n"
+     "   - check_availability에서 반환된 차량의 'id' 필드를 사용\n"
+     "3. **update_slots**: 세션의 슬롯(user_id, start_at, end_at, vehicle_id)을 업데이트.\n"
+     "4. **get_slots**: 현재 슬롯 상태와 누락 정보를 조회.\n\n"
      "## 처리 순서\n"
-     "1. check_availability로 가용 차량 확인\n"
-     "2. 반환된 차량 정보에서 'id' 필드를 추출\n"
-     "3. create_reservation 호출 시 해당 'id'를 vehicle_id로 사용\n\n"
+     "1. 사용자의 발화를 해석하여 필요한 슬롯을 도출하고, `update_slots(session_id=..., ...)`로 저장\n"
+     "2. 슬롯이 충분하면 `check_availability`를 호출하여 후보 차량을 생성\n"
+     "3. 사용자가 특정 차량을 선택하면 `update_slots(vehicle_id=...)` 호출\n"
+     "4. 모든 슬롯이 채워지면 `create_reservation(user_id, vehicle_id, from_time, to_time)` 호출\n\n"
      "## 대화 상태 관리\n"
      "매 응답 끝에 다음 형식으로 상태를 표시하라:\n"
      "---STATUS: [상태]---\n"
@@ -65,7 +75,7 @@ prompt = ChatPromptTemplate.from_messages([
      "- ERROR: 오류가 발생함\n\n"
      "사용 가능한 도구:\n{tools}"),
     MessagesPlaceholder("chat_history"),
-    ("human", "{input}"),
+    ("human", "{input}\n(세션ID: {session_id})"),
     MessagesPlaceholder("agent_scratchpad"),
 ])
 
