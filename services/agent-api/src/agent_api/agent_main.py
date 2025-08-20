@@ -2,19 +2,25 @@ from langchain_openai import AzureChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import render_text_description
-from .tools.agent_tools import check_availability, create_reservation
+from tools.agent_tools import check_availability, create_reservation
 
 from dotenv import load_dotenv, find_dotenv
+import os
 # 프로젝트 루트에서 가장 가까운 .env.local 찾아 로드
 load_dotenv(find_dotenv(".env.local"))
+# dotenv 파일에서 모델 찾아서 가져오기
 
 # 성능 최적화된 LLM 설정
 llm = AzureChatOpenAI(
-    azure_deployment="o4-mini", 
-    api_version="2024-12-01-preview",
+    # azure_deployment="o4-mini", 
     
+
+    azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
+    api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
     # 응답 품질 최적화
-    temperature=0.1,  # 낮은 temperature로 일관된 응답
+    # temperature=0.1,  # 낮은 temperature로 일관된 응답
     top_p=0.9,  # 토큰 선택 다양성 조절
     
     # 성능 최적화
@@ -23,7 +29,7 @@ llm = AzureChatOpenAI(
     
     # 안정성 향상
     max_retries=2,  # 네트워크 오류 시 재시도
-    retry_delay=1,  # 재시도 간격
+    # retry_delay=1,  # 재시도 간격
     
     # 비용 최적화
     streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
@@ -95,6 +101,25 @@ class ReservationSession:
             missing.append("사용자 ID")
         return missing
     
+    def get_current_info(self):
+        """현재 입력된 정보 요약"""
+        info = []
+        if self.start_time:
+            info.append(f"시작 시간: {self.start_time}")
+        if self.end_time:
+            info.append(f"종료 시간: {self.end_time}")
+        if self.user_id:
+            info.append(f"사용자 ID: {self.user_id}")
+        if self.vehicle_preferences:
+            prefs = []
+            if 'fuel_type' in self.vehicle_preferences:
+                prefs.append(f"연료: {self.vehicle_preferences['fuel_type']}")
+            if 'car_type' in self.vehicle_preferences:
+                prefs.append(f"차량 타입: {self.vehicle_preferences['car_type']}")
+            if prefs:
+                info.append(f"선호사항: {', '.join(prefs)}")
+        return info
+    
     def extract_info_from_message(self, message):
         """메시지에서 예약 정보 추출"""
         # 시간 정보 추출 (간단한 패턴 매칭)
@@ -125,8 +150,9 @@ def run_reservation_chat():
     """대화형 예약 시스템"""
     session = ReservationSession()
     
-    print("🚗 차량 예약 시스템에 오신 것을 환영합니다!")
+    print("�� 차량 예약 시스템에 오신 것을 환영합니다!")
     print("언제부터 언제까지 차량을 사용하실 건가요?")
+    print("(입력된 정보 확인: '확인', 예약 취소: '취소')")
     
     while not session.is_complete():
         user_input = input("사용자: ").strip()
@@ -135,6 +161,22 @@ def run_reservation_chat():
             print("예약이 취소되었습니다.")
             return
         
+        # 현재 정보 확인 요청
+        if user_input.lower() in ['확인', 'check', 'info', '정보']:
+            current_info = session.get_current_info()
+            if current_info:
+                print("📋 현재 입력된 정보:")
+                for info in current_info:
+                    print(f"   {info}")
+            else:
+                print("📋 아직 입력된 정보가 없습니다.")
+            
+            missing = session.get_missing_info()
+            if missing:
+                print(f"❌ 누락된 정보: {', '.join(missing)}")
+            print()  # 빈 줄 추가
+            continue
+        
         # 메시지에서 정보 추출
         session.extract_info_from_message(user_input)
         
@@ -142,23 +184,43 @@ def run_reservation_chat():
         missing = session.get_missing_info()
         
         if missing:
+            # 현재 정보 표시
+            current_info = session.get_current_info()
+            if current_info:
+                print("📋 현재 입력된 정보:")
+                for info in current_info:
+                    print(f"   {info}")
+                print()
+            
             # 누락된 정보 요청
             if len(missing) == 1:
-                print(f"에이전트: {missing[0]}을(를) 알려주세요.")
+                print(f"❌ {missing[0]}을(를) 알려주세요.")
             else:
-                print(f"에이전트: {', '.join(missing[:-1])}과(와) {missing[-1]}을(를) 알려주세요.")
+                print(f"❌ {', '.join(missing[:-1])}과(와) {missing[-1]}을(를) 알려주세요.")
             
             # 구체적인 안내
             if "시작 시간" in missing or "종료 시간" in missing:
-                print("   시간 형식: 2025-01-15T10:00:00Z (예시)")
+                print("   �� 시간 형식: 2025-01-15T10:00:00Z (예시)")
             if "사용자 ID" in missing:
-                print("   사용자 ID 형식: u_001 (예시)")
+                print("   �� 사용자 ID 형식: u_001 (예시)")
+            print()
         else:
             # 모든 정보가 있으면 예약 진행
             break
     
+    # 최종 확인
+    print("�� 예약 정보 최종 확인:")
+    current_info = session.get_current_info()
+    for info in current_info:
+        print(f"   {info}")
+    
+    confirm = input("\n예약을 진행하시겠습니까? (y/n): ").strip().lower()
+    if confirm not in ['y', 'yes', '예', '네']:
+        print("예약이 취소되었습니다.")
+        return
+    
     # 예약 실행
-    print("에이전트: 예약을 진행하겠습니다...")
+    print("\n🔄 예약을 진행하겠습니다...")
     
     try:
         # 가용성 확인
@@ -170,7 +232,7 @@ def run_reservation_chat():
         )
         
         if not availability_result:
-            print("에이전트: 죄송합니다. 해당 시간에 사용 가능한 차량이 없습니다.")
+            print("❌ 죄송합니다. 해당 시간에 사용 가능한 차량이 없습니다.")
             print("다른 시간대나 차량 타입을 시도해보시겠어요?")
             return
         
@@ -183,15 +245,53 @@ def run_reservation_chat():
         )
         
         if 'error' in reservation_result:
-            print(f"에이전트: 예약에 실패했습니다. {reservation_result['error']}")
+            print(f"❌ 예약에 실패했습니다. {reservation_result['error']}")
         else:
-            print(f"에이전트: 예약이 완료되었습니다!")
-            print(f"   차량: {availability_result[0]['car_model_name']}")
-            print(f"   시간: {session.start_time} ~ {session.end_time}")
-            print(f"   예약 번호: {reservation_result['id']}")
+            print(f"✅ 예약이 완료되었습니다!")
+            print(f"   🚗 차량: {availability_result[0]['car_model_name']}")
+            print(f"   ⏰ 시간: {session.start_time} ~ {session.end_time}")
+            print(f"   📝 예약 번호: {reservation_result['id']}")
     
     except Exception as e:
-        print(f"에이전트: 예약 중 오류가 발생했습니다. {str(e)}")
+        print(f"❌ 예약 중 오류가 발생했습니다. {str(e)}")
+
+def run_reservation_chat_with_agent():
+    """LangChain 에이전트를 사용한 대화형 예약 시스템"""
+    chat_history = []
+    
+    print(" 차량 예약 시스템에 오신 것을 환영합니다!")
+    print("자연어로 예약 요청을 해주세요. (예: '내일 오후 2시부터 6시까지 차량 예약하고 싶어. u_001이야')")
+    print("(종료: 'quit', 'exit', '종료', '취소')")
+    
+    while True:
+        user_input = input("사용자: ").strip()
+        
+        if user_input.lower() in ['quit', 'exit', '종료', '취소']:
+            print("예약이 취소되었습니다.")
+            break
+        
+        try:
+            print("🤖 AI 에이전트가 처리 중...")
+            
+            # LangChain 에이전트 호출
+            result = executor.invoke({
+                "input": user_input,
+                "chat_history": chat_history
+            })
+            
+            response = result["output"]
+            print(f"에이전트: {response}")
+            
+            # 대화 히스토리 업데이트
+            chat_history.append(("human", user_input))
+            chat_history.append(("ai", response))
+            
+        except Exception as e:
+            print(f"❌ 오류가 발생했습니다: {str(e)}")
 
 if __name__ == "__main__":
-    run_reservation_chat()
+    # LangChain 에이전트 사용
+    run_reservation_chat_with_agent()
+    
+    # 또는 기존 방식 사용
+    # run_reservation_chat()
