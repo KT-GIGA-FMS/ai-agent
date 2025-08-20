@@ -2,7 +2,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import render_text_description
-from tools.agent_tools import check_availability, create_reservation
+from reservation_agent.tools.reservation_tool import check_availability, create_reservation
 
 from dotenv import load_dotenv, find_dotenv
 import os
