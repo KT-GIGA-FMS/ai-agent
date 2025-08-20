@@ -2,7 +2,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import render_text_description
-from tools.agent_tools import check_availability, create_reservation
+from reservation_agent.tools.reservation_tool import check_availability, create_reservation
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -12,9 +12,6 @@ load_dotenv(find_dotenv(".env.local"))
 
 # 성능 최적화된 LLM 설정
 llm = AzureChatOpenAI(
-    # azure_deployment="o4-mini", 
-    
-
     azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
     api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -328,9 +325,6 @@ def run_reservation_chat_with_agent():
         except Exception as e:
             print(f"❌ 오류가 발생했습니다: {str(e)}")
 
-if __name__ == "__main__":
-    # LangChain 에이전트 사용
-    run_reservation_chat_with_agent()
-    
-    # 또는 기존 방식 사용
-    # run_reservation_chat()
+# CLI 실행 부분 제거 - API 서비스로 대체
+# if __name__ == "__main__":
+#     run_reservation_chat_with_agent()

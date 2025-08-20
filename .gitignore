@@ -148,6 +148,7 @@ venv.bak/
 # Service-specific environment files
 services/agent-api/.env.local
 services/query-api/.env.local
+services/agents/reservation-agent/.env.local
 
 # Spyder project settings
 .spyderproject
