@@ -328,9 +328,6 @@ def run_reservation_chat_with_agent():
         except Exception as e:
             print(f"❌ 오류가 발생했습니다: {str(e)}")
 
-if __name__ == "__main__":
-    # LangChain 에이전트 사용
-    run_reservation_chat_with_agent()
-    
-    # 또는 기존 방식 사용
-    # run_reservation_chat()
+# CLI 실행 부분 제거 - API 서비스로 대체
+# if __name__ == "__main__":
+#     run_reservation_chat_with_agent()

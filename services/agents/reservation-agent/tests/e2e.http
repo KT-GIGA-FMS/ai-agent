@@ -1,0 +1,33 @@
+### 헬스체크 테스트
+GET http://localhost:8000/healthz
+
+### 라이브니스 체크
+GET http://localhost:8000/livez
+
+### 레디니스 체크
+GET http://localhost:8000/readyz
+
+### 새 세션 생성
+POST http://localhost:8000/sessions
+Content-Type: application/json
+
+### 채팅 테스트 (세션 ID를 위에서 받은 값으로 교체)
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+  "session_id": "{{session_id}}",
+  "message": "내일 오후 2시부터 6시까지 차량 예약하고 싶어. u_001이야"
+}
+
+### 세션 상태 조회
+GET http://localhost:8000/sessions/{{session_id}}
+
+### 예약 완료 테스트
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+  "session_id": "{{session_id}}",
+  "message": "2025-01-15T14:00:00Z부터 2025-01-15T18:00:00Z까지 예약해줘"
+}
