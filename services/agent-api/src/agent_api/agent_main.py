@@ -8,7 +8,27 @@ from dotenv import load_dotenv, find_dotenv
 # 프로젝트 루트에서 가장 가까운 .env.local 찾아 로드
 load_dotenv(find_dotenv(".env.local"))
 
-llm = AzureChatOpenAI(azure_deployment="o4-mini", api_version="2024-12-01-preview")
+# 성능 최적화된 LLM 설정
+llm = AzureChatOpenAI(
+    azure_deployment="o4-mini", 
+    api_version="2024-12-01-preview",
+    
+    # 응답 품질 최적화
+    temperature=0.1,  # 낮은 temperature로 일관된 응답
+    top_p=0.9,  # 토큰 선택 다양성 조절
+    
+    # 성능 최적화
+    max_tokens=400,  # 차량 예약 응답에 적합한 길이
+    request_timeout=8,  # 5초 이내 응답을 위한 적절한 타임아웃
+    
+    # 안정성 향상
+    max_retries=2,  # 네트워크 오류 시 재시도
+    retry_delay=1,  # 재시도 간격
+    
+    # 비용 최적화
+    streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
+)
+
 tools = [check_availability, create_reservation]
 
 prompt = ChatPromptTemplate.from_messages([
