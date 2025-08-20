@@ -225,14 +225,36 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         session_info = get_session(chat_in.session_id)
         update_session_activity(chat_in.session_id)
         
+        # 현재 슬롯 상태 로드
+        current_slots = load_session_slots(chat_in.session_id)
+        
+        # 메시지에서 정보 추출
+        extracted_user_id = extract_user_id(chat_in.message)
+        extracted_start, extracted_end = extract_time_info(chat_in.message)
+        
+        # 슬롯 업데이트
+        # user_id는 최초 1회만 설정하고 이후 메시지로 덮어쓰지 않음
+        if extracted_user_id and current_slots.user_id is None:
+            current_slots.user_id = extracted_user_id
+        if extracted_start:
+            current_slots.start_at = extracted_start
+        if extracted_end:
+            current_slots.end_at = extracted_end
+        
+        # 슬롯 상태 저장
+        save_session_slots(chat_in.session_id, current_slots)
+        
+        # 누락된 슬롯 확인
+        missing_slots = current_slots.get_missing_slots()
+        next_question = generate_next_question(missing_slots)
+        
         # Redis에서 채팅 히스토리 로드
         chat_history = get_chat_history_for_langchain(chat_in.session_id)
         
         # LangChain 에이전트 호출
         result = executor.invoke({
             "input": chat_in.message,
-            "chat_history": chat_history,
-            "session_id": chat_in.session_id
+            "chat_history": chat_history
         })
         
         response = result["output"]
@@ -244,12 +266,10 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         # 세션 히스토리 업데이트
         update_session_chat_history(chat_in.session_id, chat_in.message, clean_response_text)
         
-        # LLM이 도구(update_slots)를 통해 갱신했을 수 있으므로 최신 슬롯 상태 조회
-        current_slots = load_session_slots(chat_in.session_id)
-        missing_slots = current_slots.get_missing_slots()
-        next_question = generate_next_question(missing_slots)
-        # 상태는 원칙적으로 LLM의 표시를 신뢰. 슬롯이 모두 채워졌고 상태가 CONTINUE이면 완료로 보정
-        if not missing_slots and status == "CONTINUE":
+        # 상태 결정 로직
+        if missing_slots:
+            status = "CONTINUE"
+        elif status == "CONTINUE" and current_slots.is_complete():
             status = "RESERVATION_COMPLETE"
         
         return ChatOut(

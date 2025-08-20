@@ -2,7 +2,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import render_text_description
-from reservation_agent.tools.reservation_tool import check_availability, create_reservation
+from reservation_agent.tools.reservation_tool import check_availability, create_reservation, list_available_cars
 from reservation_agent.tools.session_tools import update_slots, get_slots
 
 from dotenv import load_dotenv, find_dotenv
@@ -33,7 +33,7 @@ llm = AzureChatOpenAI(
     streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
 )
 
-tools = [check_availability, create_reservation, update_slots, get_slots]
+tools = [check_availability, create_reservation, update_slots, get_slots, list_available_cars]
 
 prompt = ChatPromptTemplate.from_messages([
     ("system",
@@ -52,19 +52,25 @@ prompt = ChatPromptTemplate.from_messages([
      "사용자가 다양한 형식으로 정보를 제공할 수 있다:\n"
      "- 시간: '내일 오후 2시', '2025-01-16T14:00:00Z', '오후 3시부터 5시까지'\n"
      "- 사용자 ID: 'u001', 'u_001', '001' → 숫자만 추출\n"
-     "- 날짜: '내일', '다음주 월요일', '2025-01-16' → 적절한 날짜로 변환\n\n"
+     "- 날짜: '내일', '다음주 월요일', '2025-01-16' → 적절한 날짜로 변환\n"
+     "- 차량: '아반떼', 'Avante', 'uuid-1' → 차량 ID로 변환\n\n"
      "## 도구 사용 규칙\n"
-     "1. **check_availability**: 가용 차량 확인 시 차량 정보 전체를 반환받음\n"
-     "2. **create_reservation**: vehicle_id는 반드시 차량의 실제 ID(예: 'uuid-1')를 사용\n"
+     "1. **list_available_cars**: 전체 차량 목록을 먼저 확인하여 사용자에게 선택지 제공\n"
+     "2. **check_availability**: 특정 시간대의 가용 차량 확인 시 차량 정보 전체를 반환받음\n"
+     "3. **create_reservation**: vehicle_id는 반드시 차량의 실제 ID(예: 'uuid-1')를 사용\n"
      "   - 차량 이름(예: 'Avante')이 아닌 ID를 사용해야 함\n"
      "   - check_availability에서 반환된 차량의 'id' 필드를 사용\n"
-     "3. **update_slots**: 세션의 슬롯(user_id, start_at, end_at, vehicle_id)을 업데이트.\n"
-     "4. **get_slots**: 현재 슬롯 상태와 누락 정보를 조회.\n\n"
+     "4. **update_slots**: 세션의 슬롯(user_id, start_at, end_at, vehicle_id)을 업데이트.\n"
+     "5. **get_slots**: 현재 슬롯 상태와 누락 정보를 조회.\n\n"
      "## 처리 순서\n"
      "1. 사용자의 발화를 해석하여 필요한 슬롯을 도출하고, `update_slots(session_id=..., ...)`로 저장\n"
      "2. 슬롯이 충분하면 `check_availability`를 호출하여 후보 차량을 생성\n"
      "3. 사용자가 특정 차량을 선택하면 `update_slots(vehicle_id=...)` 호출\n"
      "4. 모든 슬롯이 채워지면 `create_reservation(user_id, vehicle_id, from_time, to_time)` 호출\n\n"
+     "## 차량 선택 가이드\n"
+     "- 사용자가 차량을 언급하면 `list_available_cars`로 전체 목록을 보여주고 선택하도록 안내\n"
+     "- 사용자가 '아반떼'라고 하면 차량 ID를 찾아서 `update_slots(vehicle_id=...)` 호출\n"
+     "- 차량 선택 후 예약 완료까지 자연스럽게 진행\n\n"
      "## 대화 상태 관리\n"
      "매 응답 끝에 다음 형식으로 상태를 표시하라:\n"
      "---STATUS: [상태]---\n"
