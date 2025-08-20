@@ -12,9 +12,6 @@ load_dotenv(find_dotenv(".env.local"))
 
 # 성능 최적화된 LLM 설정
 llm = AzureChatOpenAI(
-    # azure_deployment="o4-mini", 
-    
-
     azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
     api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
