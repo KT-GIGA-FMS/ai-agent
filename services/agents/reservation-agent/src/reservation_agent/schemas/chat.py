@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class ChatIn(BaseModel):
@@ -12,6 +12,8 @@ class ChatOut(BaseModel):
     status: str  # CONTINUE, RESERVATION_COMPLETE, USER_CANCELLED, ERROR
     missing_info: List[str] = []
     session_id: str
+    next_question: Optional[str] = None
+    filled_slots: Dict[str, Any] = {}
 
 
 class SessionInfo(BaseModel):
