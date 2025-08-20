@@ -42,8 +42,13 @@ def get_session(session_id: str) -> SessionInfo:
     if not session_data:
         raise ValueError(f"Session {session_id} not found or expired")
     
-    data = json.loads(session_data)
-    return SessionInfo(**data)
+    try:
+        data = json.loads(session_data)
+        return SessionInfo(**data)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid session data format: {e}")
+    except Exception as e:
+        raise ValueError(f"Session data error: {e}")
 
 
 def update_session_activity(session_id: str):
@@ -106,7 +111,9 @@ def get_chat_history_for_langchain(session_id: str) -> List[tuple]:
                 ai_msg = session_info.chat_history[i + 1]
                 
                 if user_msg["role"] == "user" and ai_msg["role"] == "assistant":
-                    history.append((user_msg["content"], ai_msg["content"]))
+                    # LangChain 형식: ("human", "user message"), ("ai", "assistant message")
+                    history.append(("human", user_msg["content"]))
+                    history.append(("ai", ai_msg["content"]))
         
         return history
     except Exception:
