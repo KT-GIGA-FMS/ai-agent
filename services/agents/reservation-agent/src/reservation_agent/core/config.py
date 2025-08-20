@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv, find_dotenv
+
+# 프로젝트 루트에서 .env.local 찾아 로드
+load_dotenv(find_dotenv(".env.local"))
 
 
 class Settings:
