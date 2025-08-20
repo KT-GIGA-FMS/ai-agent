@@ -4,12 +4,18 @@ GET http://localhost:8000/healthz
 ### 라이브니스 체크
 GET http://localhost:8000/livez
 
-### 레디니스 체크
+### 레디니스 체크 (Redis 연결 확인)
 GET http://localhost:8000/readyz
+
+### 활성 세션 목록 조회 (초기에는 비어있음)
+GET http://localhost:8000/sessions
 
 ### 새 세션 생성
 POST http://localhost:8000/sessions
 Content-Type: application/json
+
+### 세션 상태 조회 (위에서 받은 session_id 사용)
+GET http://localhost:8000/sessions/{{session_id}}
 
 ### 채팅 테스트 (세션 ID를 위에서 받은 값으로 교체)
 POST http://localhost:8000/chat
@@ -20,8 +26,11 @@ Content-Type: application/json
   "message": "내일 오후 2시부터 6시까지 차량 예약하고 싶어. u_001이야"
 }
 
-### 세션 상태 조회
+### 세션 상태 재확인 (채팅 후)
 GET http://localhost:8000/sessions/{{session_id}}
+
+### 활성 세션 목록 재확인 (세션 생성 후)
+GET http://localhost:8000/sessions
 
 ### 예약 완료 테스트
 POST http://localhost:8000/chat
@@ -31,3 +40,12 @@ Content-Type: application/json
   "session_id": "{{session_id}}",
   "message": "2025-01-15T14:00:00Z부터 2025-01-15T18:00:00Z까지 예약해줘"
 }
+
+### 세션 삭제 테스트
+DELETE http://localhost:8000/sessions/{{session_id}}
+
+### 세션 삭제 후 상태 확인 (404 예상)
+GET http://localhost:8000/sessions/{{session_id}}
+
+### 활성 세션 목록 최종 확인 (삭제 후)
+GET http://localhost:8000/sessions

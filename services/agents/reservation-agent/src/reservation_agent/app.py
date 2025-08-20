@@ -2,7 +2,7 @@ from fastapi import FastAPI, Response, HTTPException
 from reservation_agent.core.db import healthcheck as db_ok
 from reservation_agent.core.redis_client import healthcheck as redis_ok
 from reservation_agent.core.config import settings
-from reservation_agent.services.chat_service import create_session, process_chat, get_session
+from reservation_agent.services.chat_service import create_session, process_chat, get_session, delete_session, get_active_sessions
 from reservation_agent.schemas.chat import ChatIn, ChatOut
 from reservation_agent.schemas.sessions import NewSessionOut, SessionStatus
 from datetime import datetime
@@ -44,14 +44,6 @@ def new_session():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"세션 생성 실패: {str(e)}")
 
-@app.post("/chat", response_model=ChatOut)
-def chat(chat_in: ChatIn):
-    """채팅 메시지 처리"""
-    try:
-        return process_chat(chat_in)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"채팅 처리 실패: {str(e)}")
-
 @app.get("/sessions/{session_id}", response_model=SessionStatus)
 def get_session_status(session_id: str):
     """세션 상태 조회"""
@@ -72,3 +64,35 @@ def get_session_status(session_id: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"세션 조회 실패: {str(e)}")
+
+@app.delete("/sessions/{session_id}")
+def delete_session_endpoint(session_id: str):
+    """세션 삭제"""
+    try:
+        success = delete_session(session_id)
+        if success:
+            return {"message": "세션이 삭제되었습니다.", "session_id": session_id}
+        else:
+            raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"세션 삭제 실패: {str(e)}")
+
+@app.get("/sessions")
+def list_active_sessions():
+    """활성 세션 목록 조회"""
+    try:
+        active_sessions = get_active_sessions()
+        return {
+            "active_sessions": active_sessions,
+            "count": len(active_sessions)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"세션 목록 조회 실패: {str(e)}")
+
+@app.post("/chat", response_model=ChatOut)
+def chat(chat_in: ChatIn):
+    """채팅 메시지 처리"""
+    try:
+        return process_chat(chat_in)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"채팅 처리 실패: {str(e)}")
