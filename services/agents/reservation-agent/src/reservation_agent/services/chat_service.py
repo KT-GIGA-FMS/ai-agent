@@ -1,10 +1,12 @@
 import uuid
 import json
+import re
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 from reservation_agent.core.redis_client import get_client
 from reservation_agent.schemas.chat import ChatIn, ChatOut, SessionInfo
+from reservation_agent.schemas.sessions import ReservationSlots
 from reservation_agent.agent_runner import executor, parse_conversation_status, clean_response
 
 
@@ -30,7 +32,82 @@ def create_session() -> str:
     client.sadd("agent:sessions:active", session_id)
     client.expire("agent:sessions:active", 3600)
     
+    # 초기 슬롯 상태 생성
+    initial_slots = ReservationSlots()
+    save_session_slots(session_id, initial_slots)
+    
     return session_id
+
+
+def save_session_slots(session_id: str, slots: ReservationSlots):
+    """세션 슬롯 상태를 Redis에 저장"""
+    client = get_client()
+    slots_key = f"agent:sess:{session_id}:slots"
+    client.setex(slots_key, 3600, json.dumps(slots.dict()))
+
+
+def load_session_slots(session_id: str) -> ReservationSlots:
+    """Redis에서 세션 슬롯 상태 로드"""
+    client = get_client()
+    slots_key = f"agent:sess:{session_id}:slots"
+    
+    slots_data = client.get(slots_key)
+    if not slots_data:
+        return ReservationSlots()
+    
+    try:
+        data = json.loads(slots_data)
+        return ReservationSlots(**data)
+    except Exception:
+        return ReservationSlots()
+
+
+def extract_user_id(message: str) -> Optional[str]:
+    """메시지에서 사용자 ID 추출"""
+    # 다양한 형식 지원: u_001, u001, 001 등
+    patterns = [
+        r'u_(\d+)',
+        r'u(\d+)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, message)
+        if match:
+            user_num = match.group(1)
+            return f"u_{user_num}"
+    
+    return None
+
+
+def extract_time_info(message: str) -> tuple[Optional[str], Optional[str]]:
+    """메시지에서 시간 정보 추출"""
+    # ISO8601 형식 시간 찾기
+    iso_pattern = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z'
+    times = re.findall(iso_pattern, message)
+    
+    if len(times) >= 2:
+        return times[0], times[1]
+    elif len(times) == 1:
+        return times[0], None
+    
+    return None, None
+
+
+def generate_next_question(missing_slots: List[str]) -> str:
+    """누락된 슬롯에 따른 다음 질문 생성"""
+    questions = {
+        "user_id": "예약자 ID를 알려주세요. (예: u_001)",
+        "start_at": "시작 시간을 알려주세요. (예: 2025-01-15T14:00:00Z)",
+        "end_at": "종료 시간을 알려주세요. (예: 2025-01-15T18:00:00Z)",
+        "vehicle_id": "차량을 선택해주세요."
+    }
+    
+    if not missing_slots:
+        return "모든 정보가 완성되었습니다. 예약을 진행하시겠습니까?"
+    
+    # 첫 번째 누락 슬롯에 대한 질문
+    first_missing = missing_slots[0]
+    return questions.get(first_missing, f"{first_missing} 정보가 필요합니다.")
 
 
 def get_session(session_id: str) -> SessionInfo:
@@ -124,9 +201,10 @@ def delete_session(session_id: str) -> bool:
     """세션 삭제"""
     client = get_client()
     session_key = f"agent:sess:{session_id}:data"
+    slots_key = f"agent:sess:{session_id}:slots"
     
     # 세션 데이터 삭제
-    deleted = client.delete(session_key)
+    deleted = client.delete(session_key, slots_key)
     
     # 활성 세션 목록에서 제거
     client.srem("agent:sessions:active", session_id)
@@ -147,6 +225,29 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         session_info = get_session(chat_in.session_id)
         update_session_activity(chat_in.session_id)
         
+        # 현재 슬롯 상태 로드
+        current_slots = load_session_slots(chat_in.session_id)
+        
+        # 메시지에서 정보 추출
+        extracted_user_id = extract_user_id(chat_in.message)
+        extracted_start, extracted_end = extract_time_info(chat_in.message)
+        
+        # 슬롯 업데이트
+        # user_id는 최초 1회만 설정하고 이후 메시지로 덮어쓰지 않음
+        if extracted_user_id and current_slots.user_id is None:
+            current_slots.user_id = extracted_user_id
+        if extracted_start:
+            current_slots.start_at = extracted_start
+        if extracted_end:
+            current_slots.end_at = extracted_end
+        
+        # 슬롯 상태 저장
+        save_session_slots(chat_in.session_id, current_slots)
+        
+        # 누락된 슬롯 확인
+        missing_slots = current_slots.get_missing_slots()
+        next_question = generate_next_question(missing_slots)
+        
         # Redis에서 채팅 히스토리 로드
         chat_history = get_chat_history_for_langchain(chat_in.session_id)
         
@@ -165,11 +266,19 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         # 세션 히스토리 업데이트
         update_session_chat_history(chat_in.session_id, chat_in.message, clean_response_text)
         
+        # 상태 결정 로직
+        if missing_slots:
+            status = "CONTINUE"
+        elif status == "CONTINUE" and current_slots.is_complete():
+            status = "RESERVATION_COMPLETE"
+        
         return ChatOut(
             response=clean_response_text,
             status=status,
             session_id=chat_in.session_id,
-            missing_info=[]  # TODO: 슬롯 분석 로직 추가
+            missing_info=missing_slots,
+            next_question=next_question,
+            filled_slots=current_slots.to_dict()
         )
         
     except ValueError as e:
