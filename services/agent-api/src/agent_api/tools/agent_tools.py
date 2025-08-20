@@ -44,6 +44,9 @@ def check_availability(from_time: str, to_time: str, fuel_type: str|None=None, c
 @tool
 def create_reservation(user_id: str, vehicle_id: str, from_time: str, to_time: str, idem_key: str|None=None) -> dict:
     """로컬 메모리에 예약 생성."""
+    print(f"DEBUG: create_reservation 호출됨 - vehicle_id: {vehicle_id}")
+    print(f"DEBUG: 사용 가능한 차량 ID들: {[c['id'] for c in CARS]}")
+    
     s = dt.datetime.fromisoformat(from_time.replace("Z","+00:00"))
     e = dt.datetime.fromisoformat(to_time.replace("Z","+00:00"))
     if idem_key:
@@ -51,7 +54,9 @@ def create_reservation(user_id: str, vehicle_id: str, from_time: str, to_time: s
         if ex: return ex
     # vehicle 존재/상태 체크
     car = next((c for c in CARS if c["id"]==vehicle_id), None)
-    if not car: return {"error":"not_found"}
+    if not car: 
+        print(f"DEBUG: 차량을 찾을 수 없음 - vehicle_id: {vehicle_id}")
+        return {"error":"not_found"}
     if car["status"]!="available": return {"error":"not_available"}
     # 겹침 체크
     for r in RESV:
