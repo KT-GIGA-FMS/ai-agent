@@ -1,6 +1,10 @@
 import pytest
 import os
 from unittest.mock import Mock
+import asyncio
+
+# pytest-asyncio 설정
+pytest_plugins = ('pytest_asyncio',)
 
 
 class FakeLLM:

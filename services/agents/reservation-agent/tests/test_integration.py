@@ -16,8 +16,8 @@ from reservation_agent.app import app
 @pytest.fixture
 async def client():
     """테스트용 HTTP 클라이언트"""
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
-        yield client
+    async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
 
 
 @pytest.mark.integration

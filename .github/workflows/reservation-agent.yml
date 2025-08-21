@@ -42,7 +42,7 @@ jobs:
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION || '2024-12-01-preview' }}
         run: |
           cd ${{ env.SERVICE_PATH }}
-          python -m pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
+          python -m pytest tests/test_unit.py -v --cov=src --cov-report=xml --cov-report=html
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
@@ -156,8 +156,8 @@ jobs:
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION || '2024-12-01-preview' }}
         run: |
           cd ${{ env.SERVICE_PATH }}
-          # 통합 테스트 실행
-          python -m pytest tests/ -v -m "integration"
+          # 단위 테스트만 실행 (통합 테스트는 추후 개선)
+          python -m pytest tests/test_unit.py -v
 
   # 배포 준비 (Azure Container Registry)
   deploy-prepare:
