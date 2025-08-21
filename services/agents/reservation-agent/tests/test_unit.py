@@ -154,10 +154,12 @@ class TestRedisClient:
     """Redis 클라이언트 단위 테스트"""
     
     @patch('reservation_agent.core.redis_client.redis.from_url')
-    def test_get_client_initialization(self, mock_from_url):
+    @patch('reservation_agent.core.redis_client.settings')
+    def test_get_client_initialization(self, mock_settings, mock_from_url):
         """Redis 클라이언트 초기화 테스트"""
         mock_client = Mock()
         mock_from_url.return_value = mock_client
+        mock_settings.REDIS_URL = "redis://localhost:6379/0"
         
         client = get_client()
         assert client == mock_client
@@ -189,10 +191,12 @@ class TestDatabase:
     """데이터베이스 관련 단위 테스트"""
     
     @patch('reservation_agent.core.db.create_engine')
-    def test_get_engine_initialization(self, mock_create_engine):
+    @patch('reservation_agent.core.db.settings')
+    def test_get_engine_initialization(self, mock_settings, mock_create_engine):
         """데이터베이스 엔진 초기화 테스트"""
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
+        mock_settings.DATABASE_URL = "postgresql://test_user:test_password@localhost:5432/test_db"
         
         engine = get_engine()
         assert engine == mock_engine
