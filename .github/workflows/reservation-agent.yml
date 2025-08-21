@@ -117,15 +117,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for security scan
+        run: |
+          cd ${{ env.SERVICE_PATH }}
+          docker build -t ${{ env.SERVICE_NAME }}:test .
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.SERVICE_PATH }}/${{ env.SERVICE_NAME }}:test
+          image-ref: ${{ env.SERVICE_NAME }}:test
           format: 'sarif'
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
