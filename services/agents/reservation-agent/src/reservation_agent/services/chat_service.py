@@ -233,9 +233,12 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         extracted_start, extracted_end = extract_time_info(chat_in.message)
         
         # 슬롯 업데이트
-        # user_id는 최초 1회만 설정하고 이후 메시지로 덮어쓰지 않음
-        if extracted_user_id and current_slots.user_id is None:
+        # 프론트엔드에서 전송한 user_id를 우선 사용, 없으면 메시지에서 추출
+        if chat_in.user_id:
+            current_slots.user_id = chat_in.user_id
+        elif extracted_user_id and current_slots.user_id is None:
             current_slots.user_id = extracted_user_id
+            
         if extracted_start:
             current_slots.start_at = extracted_start
         if extracted_end:
@@ -254,7 +257,8 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         # LangChain 에이전트 호출
         result = executor.invoke({
             "input": chat_in.message,
-            "chat_history": chat_history
+            "chat_history": chat_history,
+            "session_id": chat_in.session_id
         })
         
         response = result["output"]
