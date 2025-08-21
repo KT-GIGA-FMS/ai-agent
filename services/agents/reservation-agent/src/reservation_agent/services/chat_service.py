@@ -47,7 +47,7 @@ def save_session_slots(session_id: str, slots: ReservationSlots):
     """세션 슬롯 상태를 Redis에 저장"""
     client = get_client()
     slots_key = f"agent:sess:{session_id}:slots"
-    client.setex(slots_key, 3600, json.dumps(slots.dict()))
+    client.setex(slots_key, 3600, json.dumps(slots.model_dump()))
 
 
 def load_session_slots(session_id: str) -> ReservationSlots:

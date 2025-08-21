@@ -36,6 +36,8 @@ jobs:
         env:
           TESTING: "true"
           PYTEST_CURRENT_TEST: "true"
+          DATABASE_URL: "postgresql://test_user:test_password@localhost:5432/test_db"
+          REDIS_URL: "redis://localhost:6379/0"
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini' }}
@@ -115,15 +117,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for security scan
+        run: |
+          cd ${{ env.SERVICE_PATH }}
+          docker build -t ${{ env.SERVICE_NAME }}:test .
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.SERVICE_PATH }}/${{ env.SERVICE_NAME }}:test
+          image-ref: ${{ env.SERVICE_NAME }}:test
           format: 'sarif'
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'

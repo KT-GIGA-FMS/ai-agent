@@ -49,4 +49,4 @@ class ReservationSlots(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """딕셔너리로 변환 (None 값 제외)"""
-        return {k: v for k, v in self.dict().items() if v is not None}
+        return {k: v for k, v in self.model_dump().items() if v is not None}
