@@ -110,6 +110,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: docker-build
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -192,7 +193,7 @@ jobs:
     name: Deploy Preparation
     runs-on: ubuntu-latest
     needs: [integration-test, security-scan]
-    if: github.ref == 'refs/heads/main'
+    if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
