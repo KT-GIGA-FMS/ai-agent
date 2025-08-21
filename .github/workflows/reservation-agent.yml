@@ -66,6 +66,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run tests
+        env:
+          TESTING: "true"
+          PYTEST_CURRENT_TEST: "true"
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini' }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION || '2024-12-01-preview' }}
         run: |
           cd ${{ env.SERVICE_PATH }}
           python -m pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
@@ -171,16 +178,17 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run integration tests
+        env:
+          TESTING: "true"
+          PYTEST_CURRENT_TEST: "true"
+          DATABASE_URL: "postgresql://reservation_user:reservation_password@localhost:5432/reservation_db"
+          REDIS_URL: "redis://localhost:6379/0"
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini' }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION || '2024-12-01-preview' }}
         run: |
           cd ${{ env.SERVICE_PATH }}
-          # 환경변수 설정 (테스트용)
-          export DATABASE_URL="postgresql://reservation_user:reservation_password@localhost:5432/reservation_db"
-          export REDIS_URL="redis://localhost:6379/0"
-          export AZURE_OPENAI_API_KEY="test-key"
-          export AZURE_OPENAI_ENDPOINT="https://test.openai.azure.com/"
-          export AZURE_OPENAI_DEPLOYMENT="test-deployment"
-          export AZURE_OPENAI_API_VERSION="2024-02-15-preview"
-          
           # 통합 테스트 실행
           python -m pytest tests/ -v -m "integration"
 

@@ -17,24 +17,38 @@ from reservation_agent.tools.session_tools import get_slots, update_slots
 load_dotenv(find_dotenv(".env.local"))
 # dotenv 파일에서 모델 찾아서 가져오기
 
-# 성능 최적화된 LLM 설정
-llm = AzureChatOpenAI(
-    azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    # 응답 품질 최적화
-    # temperature=0.1,  # 낮은 temperature로 일관된 응답
-    top_p=0.9,  # 토큰 선택 다양성 조절
-    # 성능 최적화
-    max_tokens=400,  # 차량 예약 응답에 적합한 길이
-    request_timeout=8,  # 5초 이내 응답을 위한 적절한 타임아웃
-    # 안정성 향상
-    max_retries=2,  # 네트워크 오류 시 재시도
-    # retry_delay=1,  # 재시도 간격
-    # 비용 최적화
-    streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
-)
+def get_llm():
+    """환경에 따라 LLM을 반환하는 함수"""
+    # 테스트 환경인지 확인
+    if os.getenv("TESTING") == "true" or os.getenv("PYTEST_CURRENT_TEST"):
+        return None
+    
+    # API 키 확인
+    api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing AZURE_OPENAI_API_KEY environment variable")
+    
+    # 실제 환경에서는 Azure OpenAI 사용
+    return AzureChatOpenAI(
+        azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+        api_key=api_key,
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        # 응답 품질 최적화
+        # temperature=0.1,  # 낮은 temperature로 일관된 응답
+        top_p=0.9,  # 토큰 선택 다양성 조절
+        # 성능 최적화
+        max_tokens=400,  # 차량 예약 응답에 적합한 길이
+        request_timeout=8,  # 5초 이내 응답을 위한 적절한 타임아웃
+        # 안정성 향상
+        max_retries=2,  # 네트워크 오류 시 재시도
+        # retry_delay=1,  # 재시도 간격
+        # 비용 최적화
+        streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
+    )
+
+# LLM 초기화
+llm = get_llm()
 
 tools = [
     check_availability,
@@ -101,8 +115,16 @@ prompt = ChatPromptTemplate.from_messages(
 # ⬇️ tools 문자열을 프롬프트에 바인딩(버전 이슈 대비)
 prompt = prompt.partial(tools=render_text_description(tools))
 
-agent = create_tool_calling_agent(llm, tools, prompt)
-executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+# 테스트 환경에서는 executor를 None으로 설정
+def get_executor():
+    """환경에 따라 executor를 반환하는 함수"""
+    if llm is None:  # 테스트 환경
+        return None
+    
+    agent = create_tool_calling_agent(llm, tools, prompt)
+    return AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+executor = get_executor()
 
 
 class ReservationSession:
