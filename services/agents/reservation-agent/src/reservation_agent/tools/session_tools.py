@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from langchain.tools import tool
 
@@ -74,5 +74,3 @@ def get_slots(session_id: str) -> Dict[str, Any]:
         "missing_info": missing,
         "is_complete": len(missing) == 0,
     }
-
-
