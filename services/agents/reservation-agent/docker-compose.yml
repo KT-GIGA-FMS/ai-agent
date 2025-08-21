@@ -52,7 +52,9 @@ services:
       # 데이터베이스 설정
       DATABASE_URL: postgresql://reservation_user:reservation_password@postgres:5432/reservation_db
       # Redis 설정
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # TLS 검증 정책 (필요 시 none 설정). 미지정 시 기본(required)
+      REDIS_SSL_CERT_REQS: ${REDIS_SSL_CERT_REQS:-required}
       # OpenAI 설정 (환경변수에서 가져옴)
       AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
