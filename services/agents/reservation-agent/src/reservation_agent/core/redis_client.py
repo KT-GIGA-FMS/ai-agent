@@ -1,4 +1,5 @@
 import redis
+
 from reservation_agent.core.config import settings
 
 _client: redis.Redis | None = None
@@ -17,5 +18,3 @@ def healthcheck() -> bool:
         return True
     except Exception:
         return False
-
-

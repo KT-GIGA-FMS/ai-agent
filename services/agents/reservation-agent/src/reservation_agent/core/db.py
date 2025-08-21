@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+
 from reservation_agent.core.config import settings
 
 _engine: Engine | None = None
@@ -19,5 +20,3 @@ def healthcheck() -> bool:
         return True
     except Exception:
         return False
-
-
