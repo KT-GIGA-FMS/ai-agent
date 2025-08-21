@@ -8,105 +8,113 @@ GET http://localhost:8000/livez
 GET http://localhost:8000/readyz
 
 ### 활성 세션 목록 조회 (초기에는 비어있음)
-GET http://localhost:8000/sessions
+GET http://localhost:8000/api/v1/sessions
 
 ### 새 세션 생성
-POST http://localhost:8000/sessions
+POST http://localhost:8000/api/v1/sessions
 Content-Type: application/json
 
 ### 세션 상태 조회 (위에서 받은 session_id 사용)
-GET http://localhost:8000/sessions/{{session_id}}
+GET http://localhost:8000/api/v1/sessions/{{session_id}}
 
-### 테스트 1: 기본 예약 플로우 (ISO8601 시간)
-POST http://localhost:8000/chat
+### 테스트 1: 기본 예약 플로우 (사용자 ID 포함)
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "내일 오후 2시부터 6시까지 차량 예약하고 싶어. u_001이야"
+  "message": "내일 오후 2시부터 6시까지 차량 예약하고 싶어",
+  "user_id": "u_001"
 }
 
 ### 세션 상태 재확인 (채팅 후)
-GET http://localhost:8000/sessions/{{session_id}}
+GET http://localhost:8000/api/v1/sessions/{{session_id}}
 
 ### 테스트 2: 한국어 자연어 시간 처리
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "다음주 월요일 오전 9시부터 오후 5시까지 예약해줘"
+  "message": "다음주 월요일 오전 9시부터 오후 5시까지 예약해줘",
+  "user_id": "u_001"
 }
 
 ### 테스트 3: 차량 선택 테스트
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "아반떼로 예약하고 싶어"
+  "message": "아반떼로 예약하고 싶어",
+  "user_id": "u_001"
 }
 
 ### 테스트 4: 예약 완료 확인
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "네, 예약 완료해줘"
+  "message": "네, 예약 완료해줘",
+  "user_id": "u_001"
 }
 
 ### 세션 상태 최종 확인
-GET http://localhost:8000/sessions/{{session_id}}
+GET http://localhost:8000/api/v1/sessions/{{session_id}}
 
 ### 테스트 5: 새로운 세션으로 전체 플로우 테스트
-POST http://localhost:8000/sessions
+POST http://localhost:8000/api/v1/sessions
 Content-Type: application/json
 
 ### 한국어 자연어 전체 플로우
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "안녕하세요! u_002인데 내일 오후 3시부터 5시까지 차량 예약하고 싶어요"
+  "message": "안녕하세요! 내일 오후 3시부터 5시까지 차량 예약하고 싶어요",
+  "user_id": "u_002"
 }
 
 ### 차량 목록 확인
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "어떤 차량들이 있어?"
+  "message": "어떤 차량들이 있어?",
+  "user_id": "u_002"
 }
 
 ### 특정 차량 선택
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "소나타로 예약해줘"
+  "message": "소나타로 예약해줘",
+  "user_id": "u_002"
 }
 
 ### 예약 완료
-POST http://localhost:8000/chat
+POST http://localhost:8000/api/v1/chat
 Content-Type: application/json
 
 {
   "session_id": "{{session_id}}",
-  "message": "예약 완료해주세요"
+  "message": "예약 완료해주세요",
+  "user_id": "u_002"
 }
 
 ### 활성 세션 목록 재확인 (세션 생성 후)
-GET http://localhost:8000/sessions
+GET http://localhost:8000/api/v1/sessions
 
 ### 세션 삭제 테스트
-DELETE http://localhost:8000/sessions/{{session_id}}
+DELETE http://localhost:8000/api/v1/sessions/{{session_id}}
 
 ### 세션 삭제 후 상태 확인 (404 예상)
-GET http://localhost:8000/sessions/{{session_id}}
+GET http://localhost:8000/api/v1/sessions/{{session_id}}
 
 ### 활성 세션 목록 최종 확인 (삭제 후)
-GET http://localhost:8000/sessions
+GET http://localhost:8000/api/v1/sessions

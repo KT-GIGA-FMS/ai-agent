@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # Redis 서비스
+  redis:
+    image: redis:7-alpine
+    container_name: reservation-agent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - reservation-network
+
+  # PostgreSQL 서비스
+  postgres:
+    image: postgres:15-alpine
+    container_name: reservation-agent-postgres
+    environment:
+      POSTGRES_DB: reservation_db
+      POSTGRES_USER: reservation_user
+      POSTGRES_PASSWORD: reservation_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reservation_user -d reservation_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - reservation-network
+
+  # Reservation Agent 서비스
+  reservation-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: reservation-agent-app
+    ports:
+      - "8000:8000"
+    environment:
+      # 데이터베이스 설정
+      DATABASE_URL: postgresql://reservation_user:reservation_password@postgres:5432/reservation_db
+      # Redis 설정
+      REDIS_URL: redis://redis:6379/0
+      # OpenAI 설정 (환경변수에서 가져옴)
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION}
+      # 애플리케이션 설정
+      LOG_LEVEL: INFO
+      ENVIRONMENT: development
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro  # 개발 시 코드 변경 반영
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - reservation-network
+    restart: unless-stopped
+
+  # Redis Commander (Redis 관리 UI - 선택사항)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: reservation-agent-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - reservation-network
+    profiles:
+      - monitoring
+
+  # pgAdmin (PostgreSQL 관리 UI - 선택사항)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: reservation-agent-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8082:80"
+    depends_on:
+      - postgres
+    networks:
+      - reservation-network
+    profiles:
+      - monitoring
+
+volumes:
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  reservation-network:
+    driver: bridge

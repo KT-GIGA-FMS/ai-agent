@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 class ChatIn(BaseModel):
     session_id: str
     message: str
+    user_id: Optional[str] = None  # 프론트엔드에서 사용자 ID 전송
 
 
 class ChatOut(BaseModel):
