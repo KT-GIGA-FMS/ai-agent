@@ -17,17 +17,18 @@ from reservation_agent.tools.session_tools import get_slots, update_slots
 load_dotenv(find_dotenv(".env.local"))
 # dotenv 파일에서 모델 찾아서 가져오기
 
+
 def get_llm():
     """환경에 따라 LLM을 반환하는 함수"""
     # 테스트 환경인지 확인
     if os.getenv("TESTING") == "true" or os.getenv("PYTEST_CURRENT_TEST"):
         return None
-    
+
     # API 키 확인
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("Missing AZURE_OPENAI_API_KEY environment variable")
-    
+
     # 실제 환경에서는 Azure OpenAI 사용
     return AzureChatOpenAI(
         azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
@@ -46,6 +47,7 @@ def get_llm():
         # 비용 최적화
         streaming=False,  # 배치 처리를 위해 스트리밍 비활성화
     )
+
 
 # LLM 초기화
 llm = get_llm()
@@ -70,12 +72,14 @@ prompt = ChatPromptTemplate.from_messages(
             "## 슬롯 관리 규칙 (중요!)\n"
             "- 사용자 발화에서 정보를 추출하면 반드시 update_slots 도구를 호출하라\n"
             "- user_id는 숫자만 추출 (예: 'u_001입니다' → user_id='001')\n"
-            "- 시간 정보는 ISO8601 형식으로 변환 (예: '내일 오후 2시' → start_at='2025-01-16T14:00:00')\n"
+            "- 시간 정보는 ISO8601 형식으로 변환\n"
+            "  (예: '내일 오후 2시' → start_at='2025-01-16T14:00:00')\n"
             "- 매 응답 전에 get_slots로 현재 상태를 확인하라\n"
             "- 모든 update_slots/get_slots 호출 시 반드시 session_id 매개변수를 포함한다\n\n"
             "## 지능적 정보 처리\n"
             "사용자가 다양한 형식으로 정보를 제공할 수 있다:\n"
-            "- 시간: '내일 오후 2시', '2025-01-16T14:00:00Z', '오후 3시부터 5시까지'\n"
+            "- 시간: '내일 오후 2시', '2025-01-16T14:00:00Z',\n"
+            "  '오후 3시부터 5시까지'\n"
             "- 사용자 ID: 'u001', 'u_001', '001' → 숫자만 추출\n"
             "- 날짜: '내일', '다음주 월요일', '2025-01-16' → 적절한 날짜로 변환\n"
             "- 차량: '아반떼', 'Avante', 'uuid-1' → 차량 ID로 변환\n\n"
@@ -88,7 +92,8 @@ prompt = ChatPromptTemplate.from_messages(
             "4. **update_slots**: 세션의 슬롯(user_id, start_at, end_at, vehicle_id)을 업데이트.\n"
             "5. **get_slots**: 현재 슬롯 상태와 누락 정보를 조회.\n\n"
             "## 처리 순서\n"
-            "1. 사용자의 발화를 해석하여 필요한 슬롯을 도출하고, `update_slots(session_id=..., ...)`로 저장\n"
+            "1. 사용자의 발화를 해석하여 필요한 슬롯을 도출하고,\n"
+            "   `update_slots(session_id=..., ...)`로 저장\n"
             "2. 슬롯이 충분하면 `check_availability`를 호출하여 후보 차량을 생성\n"
             "3. 사용자가 특정 차량을 선택하면 `update_slots(vehicle_id=...)` 호출\n"
             "4. 모든 슬롯이 채워지면 `create_reservation(user_id, vehicle_id, from_time, to_time)` 호출\n\n"
@@ -115,14 +120,16 @@ prompt = ChatPromptTemplate.from_messages(
 # ⬇️ tools 문자열을 프롬프트에 바인딩(버전 이슈 대비)
 prompt = prompt.partial(tools=render_text_description(tools))
 
+
 # 테스트 환경에서는 executor를 None으로 설정
 def get_executor():
     """환경에 따라 executor를 반환하는 함수"""
     if llm is None:  # 테스트 환경
         return None
-    
+
     agent = create_tool_calling_agent(llm, tools, prompt)
     return AgentExecutor(agent=agent, tools=tools, verbose=True)
+
 
 executor = get_executor()
 
@@ -173,7 +180,6 @@ class ReservationSession:
         """메시지에서 예약 정보 추출"""
         # 시간 정보 추출 (간단한 패턴 매칭)
         import re
-        from datetime import datetime
 
         # ISO8601 형식 시간 찾기
         time_pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
@@ -336,7 +342,7 @@ def run_reservation_chat_with_agent():
     """LangChain 에이전트를 사용한 대화형 예약 시스템"""
     chat_history = []
 
-    print(" 차량 예약 시스템에 오신 것을 환영합니다!")
+    print("🚗 차량 예약 시스템에 오신 것을 환영합니다!")
     print(
         "자연어로 예약 요청을 해주세요. (예: '내일 오후 2시부터 6시까지 차량 예약하고 싶어. u_001이야')"
     )

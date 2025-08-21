@@ -2,7 +2,7 @@ import json
 import re
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from reservation_agent.agent_runner import (
     clean_response,
@@ -230,7 +230,7 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
     """채팅 메시지 처리 및 AI 응답 생성"""
     try:
         # 세션 유효성 확인 및 활동 시간 업데이트
-        session_info = get_session(chat_in.session_id)
+        get_session(chat_in.session_id)  # 세션 존재 확인
         update_session_activity(chat_in.session_id)
 
         # 현재 슬롯 상태 로드
@@ -241,7 +241,8 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
         extracted_start, extracted_end = extract_time_info(chat_in.message)
 
         # 슬롯 업데이트
-        # 프론트엔드에서 전송한 user_id를 우선 사용, 없으면 메시지에서 추출
+        # 프론트엔드에서 전송한 user_id를 우선 사용,
+        # 없으면 메시지에서 추출
         if chat_in.user_id:
             current_slots.user_id = chat_in.user_id
         elif extracted_user_id and current_slots.user_id is None:
@@ -300,17 +301,17 @@ def process_chat(chat_in: ChatIn) -> ChatOut:
             filled_slots=current_slots.to_dict(),
         )
 
-    except ValueError as e:
+    except ValueError:
         # 세션 만료/없음
         return ChatOut(
             response="세션이 만료되었습니다. 새로운 세션을 시작해주세요.",
             status="ERROR",
             session_id=chat_in.session_id,
         )
-    except Exception as e:
+    except Exception:
         # 기타 오류
         return ChatOut(
-            response=f"오류가 발생했습니다: {str(e)}",
+            response="오류가 발생했습니다. 다시 시도해주세요.",
             status="ERROR",
             session_id=chat_in.session_id,
         )

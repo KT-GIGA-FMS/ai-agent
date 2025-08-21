@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import APIRouter, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -22,21 +22,21 @@ app = FastAPI(
     title="차량 예약 Agent API",
     description="""
     ## 차량 예약 Agent API
-    
+
     법인 차량 예약을 위한 AI 에이전트 API입니다.
-    
+
     ### 주요 기능
     - 🤖 LLM 기반 자연어 대화 처리
     - 🚗 차량 가용성 확인 및 예약
     - 💬 세션 기반 대화 관리
     - ⏰ 한국어 자연어 시간 처리
-    
+
     ### 사용 예시
     1. 세션 생성: `POST /api/v1/sessions`
     2. 대화 시작: `POST /api/v1/chat` (예: "내일 오후 2시부터 6시까지 차량 예약하고 싶어. u_001이야")
     3. 차량 선택: "아반떼로 예약하고 싶어"
     4. 예약 완료: "예약 완료해줘"
-    
+
     ### 환경 변수
     - `AZURE_OPENAI_API_KEY`: Azure OpenAI API 키
     - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI 엔드포인트
@@ -57,6 +57,7 @@ app = FastAPI(
     redoc_url=None,  # 기본 redoc 비활성화
 )
 
+
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
@@ -74,8 +75,12 @@ async def custom_swagger_ui_html():
         openapi_url=app.openapi_url,
         title=app.title + " - Swagger UI",
         oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js",
-        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css",
+        swagger_js_url=(
+            "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"
+        ),
+        swagger_css_url=(
+            "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css"
+        ),
         swagger_ui_parameters={
             "defaultModelsExpandDepth": -1,
             "defaultModelExpandDepth": 3,
@@ -171,7 +176,6 @@ def readyz(response: Response):
 
 
 # API v1 라우터
-from fastapi import APIRouter
 
 api_v1_router = APIRouter(prefix="/api/v1", tags=["API v1"])
 
